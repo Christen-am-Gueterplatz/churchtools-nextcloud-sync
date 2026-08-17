@@ -246,3 +246,9 @@ The [Dockerfile](file:///Dockerfile) runs the container in idle mode (`tail -f /
 
 ## 📄 License
 MIT License (see [LICENSE](file:///LICENSE)).
+
+---
+
+<div align="center">
+Built with ❤️ and <b>Antigravity CLI</b>
+</div>
