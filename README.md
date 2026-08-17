@@ -79,7 +79,7 @@ pip install -r requirements.txt
 ```
 
 ### 2. Configure `.env`
-Copy [.env.example](file:///.env.example) to `.env`:
+Copy [.env.example](.env.example) to `.env`:
 ```bash
 cp .env.example .env
 ```
@@ -184,7 +184,7 @@ Options:
 
 ## 🐳 Deployment with Docker & Dokploy
 
-The [Dockerfile](file:///Dockerfile) runs the container in idle mode (`tail -f /dev/null`) so that scheduled tasks execute quickly on demand.
+The [Dockerfile](Dockerfile) runs the container in idle mode (`tail -f /dev/null`) so that scheduled tasks execute quickly on demand.
 
 ### Setting up in Dokploy
 1. **Create an Application in Dokploy:**
@@ -245,7 +245,7 @@ The [Dockerfile](file:///Dockerfile) runs the container in idle mode (`tail -f /
 ---
 
 ## 📄 License
-MIT License (see [LICENSE](file:///LICENSE)).
+MIT License (see [LICENSE](LICENSE)).
 
 ---
 
