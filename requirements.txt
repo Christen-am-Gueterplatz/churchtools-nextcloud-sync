@@ -1,0 +1,4 @@
+churchtools==0.5.4
+nc-py-api==0.30.3
+python-dotenv==1.2.3
+loguru>=0.7.0
