@@ -156,6 +156,8 @@ async def async_run() -> int:
         logger.info(f"  Total Nextcloud users:       {stats.total_nc_users}")
         logger.info(f"  Matched with ChurchTools:    {stats.matched_users}")
         logger.info(f"  Unmatched users:             {stats.unmatched_users}")
+        if stats.ambiguous_users > 0:
+            logger.warning(f"    (Ambiguous / shared emails: {stats.ambiguous_users})")
         logger.info(f"  Users with missing groups:   {stats.users_with_missing_groups}")
         logger.info(f"  Users with extra groups:     {stats.users_with_extra_groups}")
         if not dry_run:

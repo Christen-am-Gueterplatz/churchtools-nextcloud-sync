@@ -60,6 +60,7 @@ class UserGroupDiff:
     ct_person: Optional[ChurchToolsPerson]
     missing_in_nc: Set[str]  # Target groups present in CT but missing in NC
     extra_in_nc: Set[str]    # Groups in NC that are no longer present in CT (with prefix)
+    is_ambiguous: bool = False
 
     @property
     def has_changes(self) -> bool:
@@ -72,8 +73,10 @@ class SyncStats:
     total_nc_users: int = 0
     matched_users: int = 0
     unmatched_users: int = 0
+    ambiguous_users: int = 0
     users_with_missing_groups: int = 0
     users_with_extra_groups: int = 0
     total_groups_added: int = 0
     total_groups_removed: int = 0
     new_nc_groups_created: int = 0
+
