@@ -7,13 +7,13 @@ A simple Python script to automatically synchronize ChurchTools groups and roles
 ## 📌 Background & Motivation
 
 ### The Problem with Social Login & Mobile Apps
-When setting up ChurchTools login for Nextcloud via OAuth2 (following the [ChurchTools Academy Guide](https://churchtools.academy/de/help/system-einstellungen/oauth-login-systemeinstellungen/oauth-login-via-churchtools-bei-nextcloud)) and the Nextcloud **Social Login** app, there is one practical limitation:
+When setting up ChurchTools login for Nextcloud via OAuth2 (following the [ChurchTools Academy Guide](https://churchtools.academy/de/help/system-einstellungen/oauth-login-systemeinstellungen/oauth-login-via-churchtools-bei-nextcloud)) and the Nextcloud [Social Login App](https://apps.nextcloud.com/apps/sociallogin), there is one practical limitation:
 - Group memberships are **only updated when a user logs in via the web browser**.
 - Most people in our church use the **Nextcloud Mobile App** or **Desktop Client** with persistent login tokens.
 - When someone is added to a new group in ChurchTools (like tech team, worship, small groups), they won't see the corresponding Nextcloud folders because they rarely log in through the browser again.
 
 ### Alternative: ChurchTools Nextcloud Integration App
-There is an official [ChurchTools Integration App](https://apps.nextcloud.com/apps/churchtools_integration) for Nextcloud as an alternative to Social Login, which also syncs groups. However, I preferred sticking with the well-supported Social Login app and missed a few features in the integration app.
+There is an official [ChurchTools Integration App](https://apps.nextcloud.com/apps/churchtools_integration) for Nextcloud as an alternative to Social Login, which also syncs groups. However, I preferred sticking with the well-supported [Social Login App](https://apps.nextcloud.com/apps/sociallogin) and missed a few features in the integration app.
 
 ### 💡 The Solution
 I built this small sync tool for our church to run in the background (e.g. as a scheduled task in [Dokploy](https://docs.dokploy.com/docs/core/schedule-jobs) or via cron). It reads all users from Nextcloud and ChurchTools, compares the groups, and adds/removes the appropriate Nextcloud groups via the Nextcloud Provisioning API. Maybe it's useful for other churches facing the same issue!
@@ -30,6 +30,39 @@ I built this small sync tool for our church to run in the background (e.g. as a 
 - **Safe Prefix Handling**: Only touches groups starting with your prefix (e.g. `ChurchTools-`). Internal groups like `admin` remain untouched.
 - **Dry-Run Mode**: Defaults to preview mode (`--dry-run`) so you can check what would change before applying it.
 - **Docker & Dokploy Ready**: Simple Docker container that stays idle, ready for scheduled cron tasks.
+
+---
+
+## ⚙️ Configuration & Prefix Explanation
+
+### Understanding `NC_GROUP_PREFIX`
+In Nextcloud's [Social Login App](https://apps.nextcloud.com/apps/sociallogin) settings (under *Settings -> Social Login -> Custom OAuth2*), you define an **Internal name** for ChurchTools (e.g. `ChurchTools` or `churchtools`):
+- Nextcloud automatically prefixes all groups imported via OAuth with `<Internal-Name>-` (e.g. `ChurchTools-Gemeindeleitung`).
+- Set `NC_GROUP_PREFIX` in your `.env` to match this exact prefix (e.g. `NC_GROUP_PREFIX=ChurchTools-`).
+- This ensures the sync script matches the exact groups Social Login created, while leaving native Nextcloud groups (like `admin`) safe and untouched.
+
+## 🔒 Permissions & Authentication Requirements
+
+### 1. ChurchTools Permissions (`CT_LOGIN_TOKEN`)
+- The user account generating the `CT_LOGIN_TOKEN` must have **administrative permissions** in ChurchTools (specifically permission to view all persons and all groups).
+- ChurchTools filters API responses based on the permissions of the authenticated user. If a regular member's token is used, only persons and groups visible to that user will be returned, leading to incomplete synchronization.
+- **Tip:** For details on how login tokens work, see the [ChurchTools API Authentication Guide](https://churchtools.academy/de/help/system-einstellungen/api/api-authentifizierung/). You can generate a Login Token in ChurchTools under your user profile settings or via the API.
+
+### 2. Nextcloud Permissions & Sudo Mode (`NC_PASSWORD`)
+
+> [!WARNING]
+> **Do not use an App Password / App Token for `NC_PASSWORD`!**
+
+#### Why? "403 Password confirmation is required"
+Nextcloud has a security mechanism called **Sudo Mode** (`@PasswordConfirmationRequired`) for sensitive administrative actions, such as adding or removing users from groups.
+- Nextcloud **deliberately blocks App Passwords / Tokens** from performing sudo-confirmed Provisioning API calls.
+- If you use an App Token, Nextcloud will respond with: `[403] Password confirmation is required`.
+
+#### Recommended Nextcloud Setup:
+1. Create a dedicated local user in Nextcloud (e.g. `sync-bot` or `ct-sync`).
+2. Add that user to the `admin` group.
+3. Use the **actual account password** of this user for `NC_PASSWORD`.
+4. *(Optional for self-hosted instances)*: You can disable Sudo Mode in your Nextcloud `config/config.php` by setting `'sudo' => false,`.
 
 ---
 
@@ -57,10 +90,10 @@ Edit your credentials:
 CT_BASE_URL=https://yourchurch.church.tools
 CT_LOGIN_TOKEN=your_churchtools_login_token
 
-# Nextcloud
+# Nextcloud (Use regular admin password, NOT an app token)
 NC_BASE_URL=https://cloud.yourchurch.com
 NC_USERNAME=nextcloud_admin_user
-NC_PASSWORD=nextcloud_admin_password_or_app_token
+NC_PASSWORD=nextcloud_admin_actual_password
 NC_GROUP_PREFIX=ChurchTools-
 
 # Claim Type: 'groups' (default) or 'roles'
@@ -158,12 +191,12 @@ The [Dockerfile](file:///Dockerfile) runs the container in idle mode (`tail -f /
    - Source: Connect this Git repository.
    - Build Type: **Dockerfile**.
 2. **Add Environment Variables:**
-   - Put your `.env` values (`CT_BASE_URL`, `CT_LOGIN_TOKEN`, `NC_BASE_URL`, etc.) into Dokploy under **Environment**.
+   - Put your `.env` values (`CT_BASE_URL`, `CT_LOGIN_TOKEN`, `NC_BASE_URL`, `NC_USERNAME`, `NC_PASSWORD`, etc.) into Dokploy under **Environment**.
 3. **Add a Scheduled Job:**
    - Go to your application in Dokploy -> **Schedule / Cron Tasks** (see [Dokploy Schedule Jobs](https://docs.dokploy.com/docs/core/schedule-jobs)).
    - Click **Add Job**:
      - **Command:** `python main.py --sync`
-     - **Cron Expression:** `*/30 * * * *` (runs every 30 minutes) or `0 * * * *` (hourly).
+     - **Cron Expression:** `*/5 * * * *` (e.g. every 5 minutes) or `*/30 * * * *` (every 30 minutes).
 4. **Deploy**:
    - The container will sit idle and Dokploy will trigger the sync script on your schedule.
 
@@ -173,7 +206,7 @@ The [Dockerfile](file:///Dockerfile) runs the container in idle mode (`tail -f /
 
 ### Crontab
 ```cron
-*/30 * * * * cd /opt/churchtools-nextcloud-sync && .venv/bin/python main.py --sync
+*/5 * * * * cd /opt/churchtools-nextcloud-sync && .venv/bin/python main.py --sync
 ```
 
 ### Systemd Timer
@@ -193,10 +226,10 @@ The [Dockerfile](file:///Dockerfile) runs the container in idle mode (`tail -f /
 2. Timer `/etc/systemd/system/ct-nc-sync.timer`:
    ```ini
    [Unit]
-   Description=Run ChurchTools to Nextcloud Group Sync every 30 minutes
+   Description=Run ChurchTools to Nextcloud Group Sync every 5 minutes
 
    [Timer]
-   OnCalendar=*:0/30
+   OnCalendar=*:0/5
    Persistent=true
 
    [Install]
