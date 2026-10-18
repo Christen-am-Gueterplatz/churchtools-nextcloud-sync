@@ -88,6 +88,44 @@ class FailedMembershipTests(unittest.IsolatedAsyncioTestCase):
         self.nc.add_user_to_group.assert_not_awaited()
         self.nc.remove_user_from_group.assert_not_awaited()
 
+    async def test_archived_membership_is_requested_and_preserved(self):
+        self.ct._get.return_value = {"data": [{
+            "group": {
+                "title": "Escape-Room",
+                "domainAttributes": {"groupStatusId": 3},
+            },
+            "groupMemberStatus": "active",
+        }]}
+        persons = self.ct.fetch_all_persons_with_groups()
+        self.ct._get.assert_called_once_with(
+            "persons/94/groups", params={"show_inactive_groups": "true"}
+        )
+        diffs = self.engine.compute_diffs([self.user], persons)
+        self.assertFalse(diffs[0].has_changes)
+        stats = await self.engine.execute_sync(diffs, set(self.user.groups))
+        self.assertEqual(stats.total_groups_removed, 0)
+        self.nc.remove_user_from_group.assert_not_awaited()
+
+    async def test_missing_archived_membership_is_added(self):
+        self.ct._get.return_value = {"data": [{
+            "group": {
+                "title": "Escape-Room",
+                "domainAttributes": {"groupStatusId": 3},
+            },
+            "groupMemberStatus": "active",
+        }]}
+        persons = self.ct.fetch_all_persons_with_groups()
+        self.user.groups = ["admin"]
+        self.nc.ensure_group_exists = AsyncMock(return_value=False)
+        stats = await self.engine.execute_sync(
+            self.engine.compute_diffs([self.user], persons), {"ChurchTools-Escape-Room"}
+        )
+        self.assertEqual(stats.total_groups_added, 1)
+        self.nc.add_user_to_group.assert_awaited_once_with(
+            "ChurchTools-94", "ChurchTools-Escape-Room"
+        )
+        self.nc.remove_user_from_group.assert_not_awaited()
+
 
 if __name__ == "__main__":
     unittest.main()

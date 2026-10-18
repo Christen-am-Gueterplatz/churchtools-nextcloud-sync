@@ -27,6 +27,7 @@ I built this small sync tool for our church to run in the background (e.g. as a 
   - `groups`: `<Prefix><GroupName>` (e.g. `ChurchTools-Leadership`)
   - `roles`: `<Prefix><GroupName>_<RoleName>` (e.g. `ChurchTools-Leadership_Leader`)
 - **Auto-Creates Missing Groups**: If a ChurchTools group doesn't exist in Nextcloud yet, it will be created automatically.
+- **Archived Groups**: Memberships in archived ChurchTools groups are included (`show_inactive_groups=true`). Archiving a group alone therefore does not remove its Nextcloud assignments; missing assignments are added as usual.
 - **Safe Prefix Handling**: Only touches groups starting with your prefix (e.g. `ChurchTools-`). Internal groups like `admin` remain untouched.
 - **Failed Group Lookups**: If a person's ChurchTools group lookup fails or returns invalid membership data, that person is skipped for the current run. Their Nextcloud group assignments remain unchanged, and a warning and skipped-user count are logged. A successful lookup with an empty group list still allows removal of obsolete assignments.
 - **Dry-Run Mode**: Defaults to preview mode (`--dry-run`) so you can check what would change before applying it.

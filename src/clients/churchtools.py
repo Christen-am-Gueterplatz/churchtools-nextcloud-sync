@@ -84,10 +84,13 @@ class ChurchToolsClient:
         return persons
 
     def get_person_memberships(self, person_id: int) -> Optional[List[GroupMembership]]:
-        """Returns memberships, or None when they cannot be loaded safely."""
+        """Includes archived groups; returns None if memberships cannot be loaded safely."""
         try:
             roles_map = self.get_roles_masterdata()
-            res = self._get(f"persons/{person_id}/groups")
+            res = self._get(
+                f"persons/{person_id}/groups",
+                params={"show_inactive_groups": "true"},
+            )
             groups_data = res.get("data")
             if not isinstance(groups_data, list):
                 raise ValueError("Invalid group response: expected a data list")
