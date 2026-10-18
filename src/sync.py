@@ -249,6 +249,17 @@ class SyncEngine:
 
             nc_groups_set = set(nc_user.groups)
 
+            if matched_ct and matched_ct.memberships is None:
+                diff_list.append(
+                    UserGroupDiff(
+                        nc_user=nc_user,
+                        ct_person=matched_ct,
+                        missing_in_nc=set(),
+                        extra_in_nc=set(),
+                    )
+                )
+                continue
+
             if matched_ct:
                 expected_nc_groups = matched_ct.get_expected_nc_groups(
                     prefix=self.group_prefix, claim_type=self.claim_type
@@ -304,6 +315,14 @@ class SyncEngine:
                 continue
 
             stats.matched_users += 1
+
+            if ct_person.memberships is None:
+                stats.users_with_failed_memberships += 1
+                logger.warning(
+                    f"Skipping Nextcloud user '{nc_user.user_id}' (CT-ID: {ct_person.id}): "
+                    "ChurchTools group lookup failed; no group changes will be applied."
+                )
+                continue
 
             if diff.missing_in_nc:
                 stats.users_with_missing_groups += 1

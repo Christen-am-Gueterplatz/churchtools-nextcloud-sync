@@ -16,7 +16,8 @@ class ChurchToolsPerson:
     first_name: str
     last_name: str
     email: Optional[str]
-    memberships: List[GroupMembership] = field(default_factory=list)
+    # None means the lookup failed; [] means a successful lookup with no groups.
+    memberships: Optional[List[GroupMembership]] = field(default_factory=list)
 
     @property
     def full_name(self) -> str:
@@ -29,6 +30,9 @@ class ChurchToolsPerson:
         - 'groups' claim: <Prefix><GroupName> (e.g. 'ChurchTools-TechTeam')
         - 'roles' claim:  <Prefix><GroupName>_<RoleName> (e.g. 'ChurchTools-TechTeam_Leader')
         """
+        if self.memberships is None:
+            raise ValueError(f"Group memberships unavailable for CT person {self.id}")
+
         groups: Set[str] = set()
         for m in self.memberships:
             if not m.group_name:
@@ -74,6 +78,7 @@ class SyncStats:
     matched_users: int = 0
     unmatched_users: int = 0
     ambiguous_users: int = 0
+    users_with_failed_memberships: int = 0
     users_with_missing_groups: int = 0
     users_with_extra_groups: int = 0
     total_groups_added: int = 0

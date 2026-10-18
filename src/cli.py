@@ -158,6 +158,10 @@ async def async_run() -> int:
         logger.info(f"  Unmatched users:             {stats.unmatched_users}")
         if stats.ambiguous_users > 0:
             logger.warning(f"    (Ambiguous / shared emails: {stats.ambiguous_users})")
+        if stats.users_with_failed_memberships > 0:
+            logger.warning(
+                f"  Users skipped (group lookup failed): {stats.users_with_failed_memberships}"
+            )
         logger.info(f"  Users with missing groups:   {stats.users_with_missing_groups}")
         logger.info(f"  Users with extra groups:     {stats.users_with_extra_groups}")
         if not dry_run:

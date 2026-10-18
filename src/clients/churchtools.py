@@ -83,12 +83,14 @@ class ChurchToolsClient:
 
         return persons
 
-    def get_person_memberships(self, person_id: int) -> List[GroupMembership]:
-        """Retrieves all group memberships and roles for a specific person."""
+    def get_person_memberships(self, person_id: int) -> Optional[List[GroupMembership]]:
+        """Returns memberships, or None when they cannot be loaded safely."""
         try:
             roles_map = self.get_roles_masterdata()
             res = self._get(f"persons/{person_id}/groups")
-            groups_data = res.get("data", [])
+            groups_data = res.get("data")
+            if not isinstance(groups_data, list):
+                raise ValueError("Invalid group response: expected a data list")
             memberships: List[GroupMembership] = []
 
             for item in groups_data:
@@ -100,8 +102,8 @@ class ChurchToolsClient:
                     or item.get("name")
                 )
 
-                if not title:
-                    continue
+                if not isinstance(title, str) or not title.strip():
+                    raise ValueError("Invalid group response: missing group name")
 
                 role_name = None
                 role_field = item.get("role")
@@ -132,7 +134,7 @@ class ChurchToolsClient:
             return memberships
         except Exception as e:
             logger.warning(f"Could not retrieve groups for CT Person ID {person_id}: {e}")
-            return []
+            return None
 
     def fetch_all_persons_with_groups(self) -> List[ChurchToolsPerson]:
         """Loads all persons including their group memberships and roles."""
